@@ -1,4 +1,4 @@
-name: Build and deploy React app to Azure Web App - scandiwhispers
+name: Build and deploy Node.js app to Azure Web App - scandiwhispers
 
 on:
   push:
@@ -13,32 +13,27 @@ jobs:
       contents: read
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Set up Node.js version
         uses: actions/setup-node@v3
         with:
           node-version: '22.x'
 
-      - name: Install dependencies
+      - name: npm install
         run: npm install
 
-      - name: Build React app
+      - name: npm run build (React)
         run: npm run build
 
-      - name: List files to verify build
-        run: |
-          echo "Current directory: $(pwd)"
-          ls -la
-          echo "Contents of build folder:"
-          ls -la build
+      - name: Zip build directory
+        run: cd build && zip -r ../build.zip .
 
-      - name: Upload build folder as artifact
+      - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
-          name: react-build
-          path: build
+          name: node-app
+          path: build.zip
 
   deploy:
     runs-on: ubuntu-latest
@@ -48,18 +43,20 @@ jobs:
       contents: read
 
     steps:
-      - name: Download build artifact
+      - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
-          name: react-build
-          path: build
+          name: node-app
+          path: .
 
-      - name: List downloaded files
-        run: |
-          echo "Root directory:"
-          ls -la
-          echo "Build folder contents:"
-          ls -la build
+      - name: List files
+        run: ls -la
+
+      - name: Unzip build.zip
+        run: unzip build.zip -d build
+
+      - name: List unzipped build files
+        run: ls -la build
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -68,9 +65,9 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_FB163665FDEE430E98B333386F1CA896 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_C0F06D079CF24E1EAE2C5D8009A77DC2 }}
 
-      - name: Deploy to Azure Web App
+      - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'scandiwhispers'
           slot-name: 'Production'
-          package: build
+          package: build  # NOT build.zip; deploy the unzipped build contents
