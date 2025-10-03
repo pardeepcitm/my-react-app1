@@ -1,4 +1,4 @@
-name: Build and deploy Node.js app to Azure Web App - scandiwhispers
+name: Build and deploy React app to Azure Web App - scandiwhispers
 
 on:
   push:
@@ -24,23 +24,21 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build project
+      - name: Build React app
         run: npm run build
 
-      - name: Show current directory and contents
+      - name: List files to verify build
         run: |
           echo "Current directory: $(pwd)"
           ls -la
-          echo "Check dist folder:"
-          ls -la dist || true
-          echo "Check build folder:"
-          ls -la build || true
+          echo "Contents of build folder:"
+          ls -la build
 
-      - name: Upload artifact for deployment job
+      - name: Upload build folder as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: node-app
-          path: dist  # 👈 change this if your build outputs to a different folder
+          name: react-build
+          path: build
 
   deploy:
     runs-on: ubuntu-latest
@@ -50,18 +48,18 @@ jobs:
       contents: read
 
     steps:
-      - name: Download artifact from build job
+      - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
-          name: node-app
-          path: .
+          name: react-build
+          path: build
 
       - name: List downloaded files
         run: |
-          echo "Root contents:"
+          echo "Root directory:"
           ls -la
-          echo "dist folder contents:"
-          ls -la dist
+          echo "Build folder contents:"
+          ls -la build
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -75,4 +73,4 @@ jobs:
         with:
           app-name: 'scandiwhispers'
           slot-name: 'Production'
-          package: dist  # 👈 must match your actual build output folder
+          package: build
